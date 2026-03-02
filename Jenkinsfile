@@ -1,36 +1,35 @@
 pipeline {
-  agent any
+    agent any
 
-  stages {
-    stage('Build') {
-      agent {
-        docker {
-          image 'node:18'
-          reuseNode true
+    stages {
+        stage('Build') {
+            agent {
+                docker {
+                    image 'node:18-bullseye'
+                    reuseNode true
+                }
+            }
+            steps {
+                sh '''
+                    ls -la
+                    node --version
+                    npm --version
+                    rm -rf node_modules
+                    npm ci
+                    npm run build
+                    ls -la
+                '''
+            }
         }
-      }
-      steps {
-        sh '''
-          set -e
-
-          echo "Node: $(node --version)"
-          echo "NPM (before): $(npm --version)"
-
-          # Pin npm to v9 (more stable than npm 10 in many CI envs)
-          npm i -g npm@9
-          echo "NPM (after): $(npm --version)"
-
-          # Optional but helps reduce noise + flakiness
-          npm config set fund false
-          npm config set audit false
-
-          rm -rf node_modules
-          npm cache clean --force
-
-          npm ci
-          npm run build
-        '''
-      }
+        stage('test'){
+            steps{
+                sh '''
+                if [ ! -f "build/output.txt" ]; then
+                    echo "ERROR: build/output.txt not found"
+                    exit 1
+                fi
+                '''
+            }
+        }
     }
-  }
 }
